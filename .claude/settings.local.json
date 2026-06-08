@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c \"echo hello\")",
+      "Bash(\"D:/Projects/content-finder-marketplace-app/bash-test.txt\")",
+      "WebFetch(domain:doc.sitecore.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:blok.sitecore.com)",
+      "mcp__sitecore-documentation-docs__search_sitecore_knowledge_sources"
+    ]
+  }
+}

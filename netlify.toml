@@ -1,0 +1,17 @@
+# Netlify configuration for the Content Finder Marketplace app.
+#
+# The official Next.js runtime (@netlify/plugin-nextjs) is auto-installed by
+# Netlify when it detects a Next.js project. It runs the App Router server
+# (API routes, server components) as Netlify Functions and serves static assets
+# from the CDN — no manual function wiring required.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Pin Node to match the Next.js 16 / React 19 toolchain used locally.
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
