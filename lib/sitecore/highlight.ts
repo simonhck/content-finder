@@ -85,7 +85,7 @@ export function highlightSnippet(
 
   const start = Math.max(0, firstIndex - CONTEXT_BEFORE)
   const end = Math.min(value.length, start + MAX_SNIPPET_LENGTH)
-  let snippet = value.slice(start, end)
+  const snippet = value.slice(start, end)
   const prefix = start > 0 ? "…" : ""
   const suffix = end < value.length ? "…" : ""
 
