@@ -85,7 +85,6 @@ export function buildPagesEditUrl(
   const params = new URLSearchParams()
   params.set("sc_itemid", itemId)
   params.set("sc_lang", (target.language || "en").toLowerCase())
-  params.set("sc_version", "1")
   params.set("organization", context.organizationId)
   if (context.tenantName) {
     params.set("tenantName", context.tenantName)
@@ -104,7 +103,7 @@ export function buildPagesEditUrl(
  * Reconciled against a real Content-mode URL, e.g.:
  *   https://pages.sitecorecloud.io/content?tenantName=...&organization=org_xxx
  *     &sc_itemid=9854d5ed-0a9f-4e3b-b739-570fc55c2c67&sc_lang=en
- *     &sc_site=simons-sai-playground&sc_version=1
+ *     &sc_site=simons-sai-playground
  */
 export function buildExplorerUrl(
   target: ItemLinkTarget,
@@ -119,7 +118,6 @@ export function buildExplorerUrl(
   const params = new URLSearchParams()
   params.set("sc_itemid", itemId)
   params.set("sc_lang", (target.language || "en").toLowerCase())
-  params.set("sc_version", "1")
   params.set("organization", context.organizationId)
   if (context.tenantName) {
     params.set("tenantName", context.tenantName)

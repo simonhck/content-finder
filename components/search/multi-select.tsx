@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Spinner } from "@/components/ui/spinner"
 import { Icon } from "@/lib/icon"
 
 export interface MultiSelectOption {
@@ -36,12 +37,15 @@ export function MultiSelect({
   options,
   selected,
   onChange,
+  loading = false,
   emptyHint = "No options configured",
 }: {
   label: string
   options: MultiSelectOption[]
   selected: string[]
   onChange: (values: string[]) => void
+  /** Show a loading state when the options are still being derived. */
+  loading?: boolean
   emptyHint?: string
 }) {
   const hasOptions = options.length > 0
@@ -76,7 +80,11 @@ export function MultiSelect({
               {selected.length}
             </Badge>
           ) : null}
-          <Icon path={mdiChevronDown} size={0.6} />
+          {loading && !hasOptions ? (
+            <Spinner className="size-3.5" />
+          ) : (
+            <Icon path={mdiChevronDown} size={0.6} />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-0">
@@ -121,6 +129,10 @@ export function MultiSelect({
               </div>
             </div>
           </>
+        ) : loading ? (
+          <p className="text-subtle-text flex items-center gap-2 p-4 text-sm">
+            <Spinner className="size-4" /> Loading…
+          </p>
         ) : (
           <p className="text-subtle-text p-4 text-sm">{emptyHint}</p>
         )}

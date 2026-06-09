@@ -7,6 +7,12 @@ import { fetchConfigItem } from "@/lib/config/configItem"
 import { DEFAULT_CONFIG } from "@/lib/config/defaults"
 import { deriveSearchScope } from "@/lib/config/derive"
 import type { RunGraphQL } from "@/lib/config/derive"
+import {
+  applyScope,
+  readPersistedScope,
+  scopeCacheKey,
+  writePersistedScope,
+} from "@/lib/config/scopeCache"
 import { fetchTagOptions } from "@/lib/config/tagTaxonomy"
 import { runAuthoringGraphQL } from "@/lib/sitecore/searchClient"
 import type { ContentFinderConfig, TagOption } from "@/lib/sitecore/types"
@@ -23,19 +29,22 @@ interface ConfigContextValue {
   config: ContentFinderConfig
   /** Tag options for the tag filter (from the configured TagsRoot). */
   tags: TagOption[]
+  /**
+   * True while the base config (search roots + index + tag field) is still
+   * loading. The search UI gates on this: once false, the authoritative search
+   * roots are in effect, so search never runs against the default whole-tree
+   * scope.
+   */
   isLoading: boolean
+  /**
+   * True while the template/searchable-field derivation runs in the background.
+   * Search is already usable; this only drives a loading state on the derived
+   * (content-type) filter.
+   */
+  isDerivingScope: boolean
 }
 
 const ConfigContext = React.createContext<ConfigContextValue | null>(null)
-
-/**
- * Process-lifetime cache of derived scope, keyed by context + roots. Scope
- * derivation walks the content tree, so we only want to pay for it once per
- * tenant/root combination. Phase 6 will move this behind Netlify Blobs with a
- * TTL; until then an in-memory map is enough to avoid re-deriving on every
- * mount/tenant-switch within a session.
- */
-const scopeCache = new Map<string, ContentFinderConfig>()
 
 /**
  * Supplies the admin-maintained Content Finder configuration.
@@ -59,66 +68,89 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   // default whole-tree scope. The Marketplace handshake guard covers the case
   // where no client/Context ID ever arrives.
   const [isLoading, setIsLoading] = React.useState(true)
+  const [isDerivingScope, setIsDerivingScope] = React.useState(false)
 
   React.useEffect(() => {
     if (!client || !sitecoreContextId) {
       return
     }
+    // Capture the narrowed (non-null) values for use inside nested closures.
+    const contextId = sitecoreContextId
 
     let cancelled = false
     const run: RunGraphQL = (query) =>
-      runAuthoringGraphQL(client, sitecoreContextId, query)
+      runAuthoringGraphQL(client, contextId, query)
 
-    async function load() {
-      setIsLoading(true)
+    // --- Phase B (background): walk the scope to derive the content-type and
+    // searchable-field filters. This is the slow part on real content, so it
+    // runs *after* search is already usable and never blocks the UI. ---
+    async function deriveInBackground(
+      base: ContentFinderConfig,
+      cacheKey: string,
+    ) {
+      if (base.searchRoots.length === 0) {
+        return
+      }
+      if (!cancelled) setIsDerivingScope(true)
       try {
-        // 1. Base config from the Sitecore config item, falling back to defaults.
-        let base: ContentFinderConfig = DEFAULT_CONFIG
+        const scope = await deriveSearchScope(
+          run,
+          base.searchRoots,
+          base.index,
+        )
+        const data = {
+          templates: scope.templates,
+          searchableFields: scope.searchableFields,
+        }
+        writePersistedScope(cacheKey, data)
+        if (!cancelled) setConfig((prev) => applyScope(prev, data))
+      } catch (err) {
+        // Derivation is an optimisation over the base config; on failure the
+        // filters simply stay on the base defaults.
+        console.error("[ContentFinder] scope derivation failed:", err)
+      } finally {
+        if (!cancelled) setIsDerivingScope(false)
+      }
+    }
+
+    // --- Phase A (blocking): read the config item so the authoritative search
+    // roots are in effect before search can run, then release the UI. ---
+    async function loadBase() {
+      setIsLoading(true)
+      let base: ContentFinderConfig = DEFAULT_CONFIG
+      try {
         if (CONFIG_ITEM_ID) {
           const overrides = await fetchConfigItem(run, CONFIG_ITEM_ID)
           base = { ...DEFAULT_CONFIG, ...overrides }
         }
-
-        // Tag options come straight from the children of the configured Tags
-        // Root, independent of the (cached) scope derivation below, so they load
-        // even on a scope-cache hit.
-        const tagOptions = await fetchTagOptions(run, base.tagsRoot)
-        if (!cancelled) setTags(tagOptions)
-
-        const cacheKey = `${sitecoreContextId}|${base.searchRoots.join(",")}`
-        const cached = scopeCache.get(cacheKey)
-        if (cached) {
-          if (!cancelled) setConfig(cached)
-          return
-        }
-
-        // 2. Derive templates + fields from the resolved scope.
-        const scope = await deriveSearchScope(run, base.searchRoots, base.index)
-        const merged: ContentFinderConfig = {
-          ...base,
-          // Only override when derivation found something, so a cold/empty scope
-          // still leaves the app usable on the base config.
-          allowedTemplates:
-            scope.templates.length > 0
-              ? scope.templates
-              : base.allowedTemplates,
-          searchableFields:
-            scope.searchableFields.length > 0
-              ? scope.searchableFields
-              : base.searchableFields,
-        }
-        scopeCache.set(cacheKey, merged)
-        if (!cancelled) setConfig(merged)
       } catch (err) {
-        // Config read or derivation failed entirely keep the safe defaults.
-        console.error("[ContentFinder] config load failed:", err)
-        if (!cancelled) setConfig(DEFAULT_CONFIG)
-      } finally {
-        if (!cancelled) setIsLoading(false)
+        // Config item unreadable fall back to the safe defaults.
+        console.error("[ContentFinder] config item read failed:", err)
+        base = DEFAULT_CONFIG
+      }
+
+      // Apply a persisted derived scope (if fresh) so the filters are populated
+      // on first paint and we can skip the expensive re-derivation entirely.
+      const cacheKey = scopeCacheKey(contextId, base.searchRoots)
+      const persisted = readPersistedScope(cacheKey)
+      if (!cancelled) {
+        setConfig(persisted ? applyScope(base, persisted) : base)
+        // The real search roots are now in effect; search is safe to run.
+        setIsLoading(false)
+      }
+
+      // Tags load independently (cheap, not needed for scope correctness).
+      void fetchTagOptions(run, base.tagsRoot).then((tagOptions) => {
+        if (!cancelled) setTags(tagOptions)
+      })
+
+      // Only walk the tree when we don't already have a fresh cached scope.
+      if (!persisted) {
+        void deriveInBackground(base, cacheKey)
       }
     }
 
-    void load()
+    void loadBase()
 
     return () => {
       cancelled = true
@@ -126,8 +158,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   }, [client, sitecoreContextId])
 
   const value = React.useMemo<ConfigContextValue>(
-    () => ({ config, tags, isLoading }),
-    [config, tags, isLoading],
+    () => ({ config, tags, isLoading, isDerivingScope }),
+    [config, tags, isLoading, isDerivingScope],
   )
 
   return (

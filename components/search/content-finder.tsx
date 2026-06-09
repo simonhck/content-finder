@@ -17,10 +17,11 @@ import { useSearch } from "@/hooks/useSearch"
 export function ContentFinder() {
   const { isInitialized, isLoading, error, sitecoreContextId } =
     useMarketplace()
-  // The config provider runs several GraphQL queries (config item read +
-  // template/field derivation) before the real search scope is known. Until it
-  // settles, search would run against the default whole-tree scope and return
-  // confusing out-of-scope results, so gate the UI on it too.
+  // Gate the UI on the *base* config read only (the authoritative search roots).
+  // Until that settles, search would run against the default whole-tree scope
+  // and return confusing out-of-scope results. The slower template/field
+  // derivation runs in the background and only refines the filters, so it does
+  // not block search.
   const { isLoading: isConfigLoading } = useConfig()
 
   const search = useSearch()

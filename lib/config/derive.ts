@@ -80,9 +80,14 @@ export async function deriveSearchScope(
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
+  // Field-type reads are independent per template, so fan them out in parallel
+  // rather than awaiting each in turn this is the difference between N
+  // sequential round-trips and one.
   const fieldNames = new Set<string>()
-  for (const template of templates) {
-    const fields = await fetchTemplateFields(run, template.id)
+  const templateFields = await Promise.all(
+    templates.map((template) => fetchTemplateFields(run, template.id)),
+  )
+  for (const fields of templateFields) {
     for (const field of fields) {
       if (isIndexedFieldType(field.type) && field.name.trim().length > 0) {
         fieldNames.add(field.name.trim())

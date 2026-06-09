@@ -18,7 +18,7 @@ export function FiltersToolbar({
   setTagIds: (ids: string[]) => void
   setTagMatch: (mode: "ALL" | "ANY") => void
 }) {
-  const { config, tags } = useConfig()
+  const { config, tags, isDerivingScope } = useConfig()
 
   const fieldOptions = config.searchableFields.map((f) => ({
     value: f,
@@ -45,6 +45,7 @@ export function FiltersToolbar({
         options={templateOptions}
         selected={filters.templateIds}
         onChange={setTemplateIds}
+        loading={isDerivingScope && templateOptions.length === 0}
         emptyHint="No templates configured"
       />
 
