@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/content-finder-icon.png" alt="Content Finder" width="200" />
+</p>
+  
 # Content Finder - SitecoreAI Marketplace App
 
 Content Finder is a custom **SitecoreAI Marketplace** app (Full Screen extension
