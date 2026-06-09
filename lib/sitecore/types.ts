@@ -39,6 +39,13 @@ export interface ContentFinderConfig {
   tagsRoot: string | null
   /** Search index name. */
   index: string
+  /**
+   * XM Cloud tenant-name slug (e.g. "myorg-myproject-myenv"), used as the
+   * `tenantName` param in Pages/Content deep links. It isn't available from the
+   * Marketplace app context, so an admin supplies it on the config item. When
+   * null, deep links omit it (Pages then shows a tenant picker).
+   */
+  tenantName: string | null
 }
 
 export interface TemplateOption {

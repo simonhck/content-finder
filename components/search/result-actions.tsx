@@ -5,8 +5,10 @@ import {
   mdiOpenInNew,
   mdiPencilOutline,
 } from "@mdi/js"
+import * as React from "react"
 import { toast } from "sonner"
 
+import { useConfig } from "@/components/providers/config-provider"
 import { useMarketplace } from "@/components/providers/marketplace-provider"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,24 +20,63 @@ import {
 import {
   buildExplorerUrl,
   buildPagesEditUrl,
+  siteNameFromPath,
   type DeepLinkContext,
 } from "@/lib/sitecore/deeplinks"
+import { resolveSiteName } from "@/lib/sitecore/siteLookup"
 import { Icon } from "@/lib/icon"
 import type { SearchResultItem } from "@/lib/sitecore/types"
 
 export function ResultActions({ item }: { item: SearchResultItem }) {
-  const { client, appContext, tenants, activeTenantIndex } = useMarketplace()
+  const { client, appContext, sitecoreContextId } = useMarketplace()
+  const { config } = useConfig()
 
-  const linkContext: DeepLinkContext = {
-    organizationId: appContext?.organizationId,
-    tenantName: tenants[activeTenantIndex]?.tenantName,
+  // Resolve the site once per item, then reuse it for any subsequent clicks.
+  const siteNameRef = React.useRef<string | null | undefined>(undefined)
+
+  async function getSiteName(): Promise<string | null> {
+    if (siteNameRef.current !== undefined) {
+      return siteNameRef.current
+    }
+    let name: string | null = null
+    if (client && sitecoreContextId) {
+      try {
+        name = await resolveSiteName(
+          client,
+          sitecoreContextId,
+          item.id,
+          item.language,
+        )
+      } catch {
+        name = null
+      }
+    }
+    // Fall back to deriving the site from the path if the lookup came up empty.
+    if (!name) {
+      name = siteNameFromPath(item.path)
+    }
+    siteNameRef.current = name
+    return name
   }
 
-  const target = { itemId: item.id, language: item.language }
-  const pagesUrl = item.hasLayout ? buildPagesEditUrl(target, linkContext) : null
-  const explorerUrl = buildExplorerUrl(target, linkContext)
+  async function open(mode: "pages" | "explorer") {
+    const siteName = await getSiteName()
+    const context: DeepLinkContext = {
+      organizationId: appContext?.organizationId,
+      // The technical tenant-name slug isn't available in a Full Screen app's
+      // application.context (tenantName is null there), so it's supplied by the
+      // admin on the Content Finder config item. Without it Pages shows a tenant
+      // picker and can't resolve the item.
+      tenantName: config.tenantName,
+      siteName,
+    }
+    const target = { itemId: item.id, language: item.language }
+    const url =
+      mode === "pages"
+        ? buildPagesEditUrl(target, context)
+        : buildExplorerUrl(target, context)
+    const label = mode === "pages" ? "Pages" : "Explorer"
 
-  async function open(url: string | null, label: string) {
     if (!url) {
       toast.error(`Couldn't build the ${label} link for this item.`)
       return
@@ -59,11 +100,11 @@ export function ResultActions({ item }: { item: SearchResultItem }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {pagesUrl ? (
+      {item.hasLayout ? (
         <Button
           size="sm"
           variant="outline"
-          onClick={() => open(pagesUrl, "Pages")}
+          onClick={() => open("pages")}
         >
           <Icon path={mdiPencilOutline} size={0.7} />
           Open in Pages
@@ -73,7 +114,7 @@ export function ResultActions({ item }: { item: SearchResultItem }) {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => open(explorerUrl, "Explorer")}
+        onClick={() => open("explorer")}
       >
         <Icon path={mdiOpenInNew} size={0.7} />
         Open in Explorer

@@ -3,6 +3,7 @@
 import { FiltersToolbar } from "@/components/search/filters-toolbar"
 import { ResultsList } from "@/components/search/results-list"
 import { SearchBar } from "@/components/search/search-bar"
+import { useConfig } from "@/components/providers/config-provider"
 import { useMarketplace } from "@/components/providers/marketplace-provider"
 import { ErrorStates } from "@/components/ui/error-states"
 import { Spinner } from "@/components/ui/spinner"
@@ -16,6 +17,11 @@ import { useSearch } from "@/hooks/useSearch"
 export function ContentFinder() {
   const { isInitialized, isLoading, error, sitecoreContextId } =
     useMarketplace()
+  // The config provider runs several GraphQL queries (config item read +
+  // template/field derivation) before the real search scope is known. Until it
+  // settles, search would run against the default whole-tree scope and return
+  // confusing out-of-scope results, so gate the UI on it too.
+  const { isLoading: isConfigLoading } = useConfig()
 
   const search = useSearch()
 
@@ -32,11 +38,14 @@ export function ContentFinder() {
     )
   }
 
-  if (!isInitialized || isLoading || !sitecoreContextId) {
+  if (!isInitialized || isLoading || !sitecoreContextId || isConfigLoading) {
     return (
       <Centered>
         <p className="text-subtle-text flex items-center gap-2 text-sm">
-          <Spinner className="size-4" /> Connecting to SitecoreAI…
+          <Spinner className="size-4" />{" "}
+          {isConfigLoading && isInitialized && sitecoreContextId
+            ? "Loading search configuration…"
+            : "Connecting to SitecoreAI…"}
         </p>
       </Centered>
     )
@@ -59,7 +68,6 @@ export function ContentFinder() {
           setTemplateIds={search.setTemplateIds}
           setTagIds={search.setTagIds}
           setTagMatch={search.setTagMatch}
-          setSort={search.setSort}
         />
       </div>
 

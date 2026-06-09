@@ -40,3 +40,18 @@ export function formatGuidBraced(
   const g = normalized.toUpperCase()
   return `{${g.slice(0, 8)}-${g.slice(8, 12)}-${g.slice(12, 16)}-${g.slice(16, 20)}-${g.slice(20)}}`
 }
+
+/**
+ * Formats a GUID into the dashed, lower-case, brace-less form the SitecoreAI
+ * Content/Pages deep links use: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`.
+ * Returns null when the input isn't a GUID.
+ */
+export function formatGuidDashed(
+  value: string | null | undefined,
+): string | null {
+  const g = normalizeGuid(value)
+  if (!g) {
+    return null
+  }
+  return `${g.slice(0, 8)}-${g.slice(8, 12)}-${g.slice(12, 16)}-${g.slice(16, 20)}-${g.slice(20)}`
+}

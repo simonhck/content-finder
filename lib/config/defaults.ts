@@ -16,6 +16,8 @@ export const DEFAULT_CONFIG: ContentFinderConfig = {
   tagField: "Tags",
   tagsRoot: null,
   index: "sitecore_master_index",
+  // Supplied via the config item's "Tenant Name" field; no sensible default.
+  tenantName: null,
 }
 
 /** Sort options offered in the UI. `field` values are index field names. */

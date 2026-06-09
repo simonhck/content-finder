@@ -14,6 +14,23 @@ import type {
 
 const DEBOUNCE_MS = 350
 
+/**
+ * Removes repeated item+language entries while preserving order. Page
+ * boundaries can overlap (the index may return an item on two adjacent pages),
+ * so accumulated results are de-duplicated as new pages are appended.
+ */
+function dedupeById(items: SearchResultItem[]): SearchResultItem[] {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = `${item.id}:${item.language}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
+}
+
 export interface SearchFilters {
   text: string
   fields: string[]
@@ -118,7 +135,7 @@ export function useSearch(): UseSearchResult {
           return
         }
         setResults((prev) =>
-          append ? [...prev, ...outcome.items] : outcome.items,
+          append ? dedupeById([...prev, ...outcome.items]) : outcome.items,
         )
         setHasMore(outcome.hasMore)
         setPageIndex(nextPageIndex)

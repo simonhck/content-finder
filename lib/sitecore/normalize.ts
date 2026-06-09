@@ -34,10 +34,23 @@ export function normalizeSearchResponse(
 ): SearchResultItem[] {
   const results = raw?.search?.results ?? []
 
-  return results
+  const items = results
     .map((entry) => entry?.innerItem)
     .filter((item): item is RawInnerItem => Boolean(item))
     .map((item) => normalizeItem(item, fieldAliases))
+
+  // The index can return the same item+language more than once (e.g. when an
+  // item matches via several criteria), which would otherwise produce duplicate
+  // React keys and an inflated result count. Keep the first occurrence of each.
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = `${item.id}:${item.language}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
 }
 
 function normalizeItem(

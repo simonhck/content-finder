@@ -38,13 +38,27 @@ export function buildSearchQuery(
   const topCriteria: string[] = []
   const subStatements: string[] = []
 
-  // --- Full-text: required, may match in ANY of the searched fields. ---
+  // --- Full-text. ---
+  // We use CONTAINS (substring match) rather than SEARCH (whole-token match)
+  // everywhere: SEARCH tokenizes ("simons-sai-playground" → simons/sai/playground),
+  // so "simon" wouldn't match, whereas CONTAINS matches any substring, which is
+  // what authors expect ("simon" finds "simons-…").
+  //
+  // When the user picks specific fields, match each of them (OR-group). When no
+  // field is picked, search the index-wide aggregate `_content` field rather than
+  // guessing template-specific field names: the index rejects the whole query if
+  // a criterion references a field it doesn't know, and `_content` (a standard
+  // computed field that concatenates all text fields) always exists.
   const text = params.text.trim()
-  if (text && fieldsToSearch.length > 0) {
-    const orFields = fieldsToSearch.map((field) =>
-      renderCriterion("SEARCH", field, text, "SHOULD"),
-    )
-    subStatements.push(renderStatement("MUST", orFields))
+  if (text) {
+    if (params.fields.length > 0) {
+      const orFields = params.fields.map((field) =>
+        renderCriterion("CONTAINS", field, text, "SHOULD"),
+      )
+      subStatements.push(renderStatement("MUST", orFields))
+    } else {
+      topCriteria.push(renderCriterion("CONTAINS", "_content", text, "MUST"))
+    }
   }
 
   // --- Scope: descendants of one or more search roots (`_path`). ---
@@ -98,8 +112,21 @@ export function buildSearchQuery(
   const pageIndex = clampInt(params.paging.pageIndex, 0, 100000, 0)
   const skip = pageIndex * pageSize
 
-  const sortField = gqlString(params.sort.field || "_name")
-  const sortDirection = sanitizeDirection(params.sort.direction)
+  // `_score` is Solr's natural relevance order — emitting it as an explicit
+  // sort field is unnecessary and not always accepted, so omit the sort clause
+  // for the default relevance sort and only sort when a real field is chosen.
+  const sortClause =
+    params.sort.field && params.sort.field !== "_score"
+      ? `\n      sort: { field: ${gqlString(params.sort.field)}, direction: ${sanitizeDirection(params.sort.direction)} }`
+      : ""
+
+  // Only include `subStatements` when there is at least one — an empty
+  // `subStatements: []` makes the search resolver fail ("search service is not
+  // available"), and none of Sitecore's documented examples emit it.
+  const subStatementsClause =
+    subStatements.length > 0
+      ? `\n        subStatements: ${renderSubStatements(subStatements)}`
+      : ""
 
   const fieldSelections = Object.entries(fieldAliases)
     .map(([alias, name]) => `${alias}: field(name: ${gqlString(name)}) { value }`)
@@ -109,13 +136,11 @@ export function buildSearchQuery(
   search(
     query: {
       index: ${gqlString(config.index)}
-      paging: { pageSize: ${pageSize}, skip: ${skip}, pageIndex: ${pageIndex} }
-      sort: { field: ${sortField}, direction: ${sortDirection} }
+      paging: { pageSize: ${pageSize}, skip: ${skip}, pageIndex: ${pageIndex} }${sortClause}
       searchStatement: {
         criteria: [
           ${topCriteria.join("\n          ")}
-        ]
-        subStatements: ${renderSubStatements(subStatements)}
+        ]${subStatementsClause}
       }
     }
   ) {

@@ -72,8 +72,12 @@ function EmptyStates({
     error: <Button variant="link">Try again</Button>,
   };
 
+  // An explicit `null` means "no action button"; only fall back to the default
+  // boilerplate action when the caller omits the prop entirely.
   const finalActions =
-    actions || defaultActions[variant || "no-search-results"];
+    actions === undefined
+      ? defaultActions[variant || "no-search-results"]
+      : actions;
 
   return (
     <div
