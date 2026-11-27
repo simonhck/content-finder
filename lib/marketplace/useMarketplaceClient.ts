@@ -85,16 +85,16 @@ export function useMarketplaceClient(
 
   const [client, setClient] = useState<ClientSDK | null>(clientInstance)
   const [error, setError] = useState<Error | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  // Start in the loading state when we're about to auto-initialize, so the
+  // mount effect doesn't need to set state synchronously.
+  const [isLoading, setIsLoading] = useState(autoInit && !clientInstance)
   const isMounted = useRef(true)
 
-  const initialize = useCallback(async () => {
+  /** Runs the (retrying) handshake; all state updates happen after an await. */
+  const connect = useCallback(async () => {
     if (typeof window === "undefined") {
       return
     }
-
-    setIsLoading(true)
-    setError(null)
 
     let lastError: Error | null = null
 
@@ -120,19 +120,28 @@ export function useMarketplaceClient(
     }
   }, [retryAttempts, retryDelay])
 
+  const initialize = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    await connect()
+  }, [connect])
+
   useEffect(() => {
     isMounted.current = true
 
+    // If the shared client already exists, `client` was seeded from it in
+    // useState above, so there's nothing to do here.
     if (autoInit && !clientInstance) {
-      void initialize()
-    } else if (clientInstance) {
-      setClient(clientInstance)
+      // Starts the async SDK handshake; connect() only sets state after
+      // awaiting it, so there are no synchronous updates in this effect.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void connect()
     }
 
     return () => {
       isMounted.current = false
     }
-  }, [autoInit, initialize])
+  }, [autoInit, connect])
 
   return {
     client,

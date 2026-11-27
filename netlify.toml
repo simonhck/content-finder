@@ -10,8 +10,8 @@
   publish = ".next"
 
 [build.environment]
-  # Pin Node to match the Next.js 16 / React 19 toolchain used locally.
-  NODE_VERSION = "20"
+  # Pin Node to the active LTS line (matches "engines" in package.json).
+  NODE_VERSION = "24"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

@@ -100,6 +100,18 @@ export function useSearch(): UseSearchResult {
     filters.templateIds.length > 0 ||
     filters.tagIds.length > 0
 
+  // Clear results when the query is emptied. Done during render (React's
+  // "adjust state when a value changes" pattern) rather than in an effect.
+  const [prevHasQuery, setPrevHasQuery] = React.useState(hasQuery)
+  if (hasQuery !== prevHasQuery) {
+    setPrevHasQuery(hasQuery)
+    if (!hasQuery) {
+      setResults([])
+      setHasMore(false)
+      setError(null)
+    }
+  }
+
   const runSearch = React.useCallback(
     async (nextPageIndex: number, append: boolean) => {
       if (!client || !sitecoreContextId) {
@@ -170,15 +182,12 @@ export function useSearch(): UseSearchResult {
 
   // Re-run (from page 0) whenever the debounced query or any filter changes.
   React.useEffect(() => {
-    if (!client || !sitecoreContextId) {
+    if (!client || !sitecoreContextId || !hasQuery) {
       return
     }
-    if (!hasQuery) {
-      setResults([])
-      setHasMore(false)
-      setError(null)
-      return
-    }
+    // Fetching from an external system on input change is a legitimate effect;
+    // runSearch only flips the loading flag before awaiting the request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void runSearch(0, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

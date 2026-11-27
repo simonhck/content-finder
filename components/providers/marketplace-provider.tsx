@@ -54,7 +54,7 @@ export function MarketplaceProvider({
   const [appContext, setAppContext] =
     React.useState<ApplicationContext | null>(null)
   const [contextError, setContextError] = React.useState<Error | null>(null)
-  const [activeTenantIndex, setActiveTenantIndex] = React.useState(0)
+  const [selectedTenantIndex, setActiveTenantIndex] = React.useState(0)
 
   React.useEffect(() => {
     if (!client) {
@@ -95,12 +95,10 @@ export function MarketplaceProvider({
     }))
   }, [appContext])
 
-  // Keep the selected tenant index valid if the tenant list changes.
-  React.useEffect(() => {
-    if (tenants.length > 0 && activeTenantIndex >= tenants.length) {
-      setActiveTenantIndex(0)
-    }
-  }, [tenants, activeTenantIndex])
+  // Keep the selected tenant index valid if the tenant list changes (derived,
+  // rather than corrected via an effect, to avoid an extra render pass).
+  const activeTenantIndex =
+    selectedTenantIndex < tenants.length ? selectedTenantIndex : 0
 
   const sitecoreContextId =
     tenants[activeTenantIndex]?.previewContextId || null

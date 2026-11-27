@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
@@ -16,6 +17,12 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "Content Finder",
+  description:
+    "Find content items across your SitecoreAI environment and jump straight into editing.",
+}
 
 export default function RootLayout({
   children,

@@ -40,9 +40,9 @@ export function buildSearchQuery(
 
   // --- Full-text. ---
   // We use CONTAINS (substring match) rather than SEARCH (whole-token match)
-  // everywhere: SEARCH tokenizes ("simons-sai-playground" → simons/sai/playground),
-  // so "simon" wouldn't match, whereas CONTAINS matches any substring, which is
-  // what authors expect ("simon" finds "simons-…").
+  // everywhere: SEARCH tokenizes ("acme-corporate-site" → acme/corporate/site),
+  // so "corp" wouldn't match, whereas CONTAINS matches any substring, which is
+  // what authors expect ("corp" finds "acme-corporate-…").
   //
   // When the user picks specific fields, match each of them (OR-group). When no
   // field is picked, search the index-wide aggregate `_content` field rather than

@@ -1,7 +1,12 @@
 <p align="center">
   <img src="public/content-finder-icon.png" alt="Content Finder" width="200" />
 </p>
-  
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
+  <a href="https://github.com/simonhck/content-finder/actions/workflows/ci.yml"><img src="https://github.com/simonhck/content-finder/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+</p>
+
 # Content Finder - SitecoreAI Marketplace App
 
 Content Finder is a custom **SitecoreAI Marketplace** app (Full Screen extension
@@ -19,8 +24,8 @@ required.
 
 ## Features
 
-- **Full-text search** across an item's text fields (substring match, so `simon`
-  finds `simons-sai-playground`).
+- **Full-text search** across an item's text fields (substring match, so `corp`
+  finds `acme-corporate-site`).
 - **Field-scoped search** - restrict the query to chosen fields.
 - **Filters** - content-type (template) filter and tag filter, with tag
   match-ALL / match-ANY.
@@ -52,6 +57,8 @@ custom authentication - the SDK handles auth via the host.
 Blok/shadcn UI · `@sitecore-marketplace-sdk/client` + `/xmc`.
 
 ## Local development
+
+Requires **Node.js 24** or later.
 
 ```bash
 npm install
@@ -153,3 +160,19 @@ then shows a tenant picker and opens the default Home item instead of the target
 Templates and the full searchable-field list are **derived from the configured
 scope** at runtime and cached for the session, so the content-type and field
 filters reflect what actually lives under your search roots.
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `npm run lint`,
+`npm run typecheck` and `npm run build` before opening a PR - CI runs the same
+checks.
+
+## License
+
+[MIT](LICENSE)
+
+## Disclaimer
+
+This is an independent community project. It is not affiliated with, endorsed
+by, or supported by Sitecore. Sitecore, SitecoreAI and XM Cloud are trademarks
+of Sitecore Corporation A/S.

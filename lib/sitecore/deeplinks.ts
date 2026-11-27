@@ -48,8 +48,8 @@ const SITE_CHILD_FOLDERS = new Set([
  * Derives the site name from a content item path. SitecoreAI sites live under
  * `/sitecore/content/<group?>/<site>/<Home|Data|Media|...>/...`, so the site is
  * the segment immediately preceding the first standard site-child folder, e.g.
- *   /sitecore/content/Playgrounds/simons-sai-playground/Home/...        → simons-sai-playground
- *   /sitecore/content/Playgrounds/simons-sai-playground/Data/Banners/x  → simons-sai-playground
+ *   /sitecore/content/MyTenant/acme-corporate-site/Home/...        → acme-corporate-site
+ *   /sitecore/content/MyTenant/acme-corporate-site/Data/Banners/x  → acme-corporate-site
  * Returns null when the path doesn't follow that shape, in which case Content
  * mode falls back to resolving by id.
  */
@@ -103,7 +103,7 @@ export function buildPagesEditUrl(
  * Reconciled against a real Content-mode URL, e.g.:
  *   https://pages.sitecorecloud.io/content?tenantName=...&organization=org_xxx
  *     &sc_itemid=9854d5ed-0a9f-4e3b-b739-570fc55c2c67&sc_lang=en
- *     &sc_site=simons-sai-playground
+ *     &sc_site=acme-corporate-site
  */
 export function buildExplorerUrl(
   target: ItemLinkTarget,
